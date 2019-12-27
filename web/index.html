@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Chat room ;)</title>
+</head>
+
+<body>
+    <button id='generateCode' onclick='getSecretCode()'>Start a chat</button>
+    <p id='secretCodeDisp'></p>
+
+    <input type="text" id='enterSecretCode'>
+
+    <button id='submitSecretCode' onclick='submitSecretCode()'>Submit secret code</button>
+
+    <br>
+    <br>
+
+    <script src="http://glendatxn.local:3000/socket.io/socket.io.js"></script>
+
+    <script>
+        let socket = io('http://glendatxn.local:3000');
+
+        let username;
+        let msgBox;
+        let sendBtn;
+        let secretCode = '';
+        let chatName;
+
+        //manual call functions
+
+        function setUp() {
+            username = window.prompt('Please key in your username');
+
+            msgBox = document.createElement('input');
+            msgBox.type = 'text';
+            msgBox.id = 'msgInput';
+            msgBox.placeholder = 'Type Message Here';
+            document.body.appendChild(msgBox);
+
+            sendBtn = document.createElement('button');
+            sendBtn.innerHTML = 'Send';
+            sendBtn.id = 'sendBtn';
+            document.body.appendChild(sendBtn);
+
+            sendBtn.addEventListener('click', sendMessage);
+
+        }
+
+        function startChat() {
+            chatName = window.prompt('What is the chat name?');
+            let chatNameDisp = document.createElement('p');
+            chatNameDisp.innerHTML = 'chatname: ' + chatName;
+            chatNameDisp.style.fontWeight = 'bold';
+            document.body.appendChild(chatNameDisp);
+
+            socket.emit('chatName', { chatName: chatName });
+        }
+
+        //auto call functions
+        function getSecretCode() {
+
+            setUp();
+
+            for (let i = 0; i < 6; i++) {
+                secretCode += (Math.floor(Math.random() * 9)).toString();
+            }
+            console.log(secretCode);
+
+            let secretCodeDisp = document.getElementById('secretCodeDisp');
+            secretCodeDisp.innerHTML = 'hi ' + username + '! Your secret code is ' + secretCode + '</br>';
+
+            socket.emit('secretCode', { user: username, secretCode: secretCode });
+
+            startChat();
+
+            secretCode = '';
+        }
+
+        function submitSecretCode() {
+            let submittedCode = document.getElementById('enterSecretCode').value;
+            console.log(submittedCode);
+            socket.emit('checkSecretCode', { submittedCode: submittedCode });
+
+            socket.on('codeValidated', (data) => {
+                window.alert('code correct! now joining chat...');
+                setUp();
+                socket.emit('newUserJoined', { username: username });
+
+                let chatNameDisp = document.createElement('p');
+
+                chatNameDisp.innerHTML = 'chatname: ' + data.chatName;
+                chatNameDisp.style.fontWeight = 'bold';
+                document.body.appendChild(chatNameDisp);
+            })
+            socket.on('codeDenied', () => {
+                window.alert('code is incorrect, please try again');
+            })
+        }
+
+        function sendMessage() {
+            let messageToBeSent = msgBox.value;
+            socket.emit('sendMessage', { username: username, msg: messageToBeSent });
+            msgBox.value = '';
+        }
+
+        function displayMessage(message) {
+            let messageDisp = document.createElement('p');
+            messageDisp.innerHTML = message;
+            document.body.appendChild(messageDisp);
+        }
+
+        //socket
+
+        socket.on('displayMessage', (data) => {
+            if (username) {
+                displayMessage(data.username + ': ' + data.msg);
+            }
+        })
+
+        socket.on('newUser', (data) => {
+            let newUserUsername = data.username;
+
+            let newUserDisp = document.createElement('p');
+            newUserDisp.style.fontStyle = 'italic';
+            newUserDisp.innerHTML = newUserUsername + ' has joined the chat';
+            document.body.appendChild(newUserDisp);
+        })
+
+
+    </script>
+
+</body>
+
+</html>
